@@ -54,6 +54,7 @@ If you have never signed in before, start with
 
 **Reference**
 
+- [Using FIXIT AI on your Android phone](#using-fixit-ai-on-your-android-phone)
 - [Repair statuses explained](#repair-statuses-explained)
 - [Quick troubleshooting](#quick-troubleshooting)
 - [Screenshot index](#screenshot-index)
@@ -729,6 +730,31 @@ When the repair is done (status *Completed*, *Ready for Pickup* or *Delivered*):
 ---
 
 # Reference
+
+## Using FIXIT AI on your Android phone
+
+FIXIT AI also installs as an Android app (**FIXIT-AI.apk**) — the same app you use on the
+shop computer, on a phone. It opens the same login page, and everything you do in it is
+saved to the same spreadsheet instantly. There is nothing extra to set up on the phone and
+no separate password.
+
+**Install once:**
+
+1. On the phone, open the download link or scan the QR code in the repository's
+   [Android app](README.md#android-app) section (stay signed in to GitHub — the
+   repository is private).
+2. Tap the downloaded file and allow the install when Android asks.
+3. Open **FIXIT AI** from the app drawer and sign in with your usual User ID / email and
+   password.
+
+**Day to day:** use it exactly like the browser app — customers, repairs, photos,
+diagnostics, parts and reports all work the same, and changes appear on every other device
+(the app is a window onto the same server). If the phone loses internet, the app shows a
+*"Can't reach the FIXIT AI service"* screen and reconnects by itself — nothing is lost,
+because all data is stored on the server.
+
+**Updates:** when a new version is released, open the same link on the phone and install
+again — it updates over the old app and keeps you signed in.
 
 ## Repair statuses explained
 

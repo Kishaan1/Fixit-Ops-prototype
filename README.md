@@ -18,6 +18,9 @@ The app adds on top of the spreadsheet what a sheet alone cannot do:
 > 📘 **Looking for how to use the app day-to-day?**
 > The step-by-step guide for the shop owner and technicians lives in **[USER_MANUAL.md](USER_MANUAL.md)**.
 
+> 📱 **FIXIT AI also installs as an Android app** — the direct APK download, QR code and
+> install steps live in **[Android app](#android-app)** below.
+
 ---
 
 ## Table of contents
@@ -45,6 +48,7 @@ The app adds on top of the spreadsheet what a sheet alone cannot do:
 - [Testing](#testing)
 - [Local UI preview harness](#local-ui-preview-harness)
 - [Production deployment](#production-deployment)
+- [Android app](#android-app)
 - [Security](#security)
 - [Backups and recovery](#backups-and-recovery)
 - [Troubleshooting](#troubleshooting)
@@ -419,6 +423,10 @@ npm scripts:
 | `npm run db:migrate:sheets` | One-time import of legacy SQLite data into the spreadsheet |
 | `npm run db:verify:sheets` | Read-only consistency check of the spreadsheet (counts, duplicates, relations) |
 | `npm run test:engine` / `test:api` / `test:sheets` | Test suites (see below) |
+| `npm run assets:brand` | Regenerate the Android icon/splash source images (`assets/`) via headless Chrome |
+| `npm run android:offline` | Bake `CAP_SERVER_URL` into the bundled offline page (run after `npm run build`) |
+| `npm run android:version` | Sync the `package.json` version into the Android app (`versionName`/`versionCode`) |
+| `npm run android:qr -- <owner/repo>` | Generate + verify the APK download QR and insert the live link into this README |
 | `npm run setup` | Alias for `db:verify:sheets` |
 
 Helper scripts in [`scripts/`](scripts/) used by those commands and by maintainers:
@@ -550,6 +558,160 @@ npm run db:verify:sheets      # read-only counts, duplicate and relationship che
 
 Both refuse to run when the gateway is not configured. The import is idempotent; sessions and
 password-reset tokens are intentionally not copied.
+
+## Android app
+
+FIXIT AI ships as an installable Android app — **FIXIT-AI.apk**. It is a thin native shell
+around your deployed FIXIT AI site: the app loads your production server directly, so login,
+the Owner and Technician portals, Google Sheets synchronisation, Drive photo uploads and QR
+service reports all behave exactly like the browser version — same accounts, same data, no
+separate database and no demo credentials.
+
+| | |
+| --- | --- |
+| App name | FIXIT AI |
+| Package ID | `com.fixitai.app` |
+| Current version | 1.0.0 (versionCode 1000000) — see [Version history](#version-history) |
+| Minimum Android | 6.0 Marshmallow (API 23) |
+| Target Android | 15 (API 35) |
+| Backend | the deployed production server — set once via the `CAP_SERVER_URL` build variable; never localhost |
+
+### Download
+
+<!-- fixit-apk-download:start -->
+> 🔗 **The direct download link and QR code are inserted here automatically once the
+> private GitHub repository exists and the first release is published.** After pushing
+> tag `v1.0.0` (see [Releasing a new APK](#releasing-a-new-apk)), run:
+>
+> ```bash
+> npm run android:qr -- <owner/repo>
+> ```
+>
+> That command generates the **verified** QR code (`docs/qr/android-apk.png`), confirms it
+> decodes back to the real download URL, and writes the live link into this block. No
+> placeholder link is ever committed.
+<!-- fixit-apk-download:end -->
+
+> 🔒 This repository is **private** (it holds the Sheets gateway credentials), so the
+> download link and QR code work while signed in to GitHub with an account that has access
+> to the repository — that is the shop's staff, exactly who needs the app.
+
+### Installing on an Android device
+
+1. Open the download link above **on the phone** (or scan the QR code with the camera),
+   signed in to GitHub in the browser — the APK downloads directly.
+2. Tap the downloaded `FIXIT-AI.apk` in the notification shade or the Downloads app.
+3. Android asks once to allow installs from that source — allow it
+   (*Settings → Apps → Special access → Install unknown apps* on Android 8 and newer).
+4. Tap **Install**. The app opens with the FIXIT AI splash screen; sign in with your real
+   owner or technician credentials — the same User ID/email and password as the browser.
+
+### Permissions
+
+| Permission | Required | Why |
+| --- | --- | --- |
+| `INTERNET` | Yes | All data lives in your spreadsheet through the FIXIT AI server |
+| `CAMERA` | No | Only for taking device photos inside the app; picking existing photos works without it, and devices without a camera can still install the app |
+
+### Updating
+
+- Download the new APK on the phone and open it — Android updates the app in place; your
+  login session and data are untouched (everything is stored server-side anyway).
+- Updates must be signed with the same release keystore (see [Release signing](#release-signing)).
+  If Android reports *"App not installed"* during an update, the APK was signed with a
+  different key — uninstall the old app first, then install the new one.
+
+### Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| *"Can't reach the FIXIT AI service"* screen | No internet or the server is down. The app retries automatically every 30 s; also check the server's `/api/health`. |
+| *"App not installed"* | Corrupted download (re-download) or a signature change (see [Updating](#updating)). |
+| Login works in the browser but not the app | The APK points at the server URL it was built with. If the deployment moved, rebuild the APK with the new `CAP_SERVER_URL`. |
+| Photos won't upload | Check the phone's connection and `MAX_UPLOAD_MB` on the server. |
+
+### Version history
+
+| Version | Date | Notes |
+| --- | --- | --- |
+| 1.0.0 | — *(pending first tagged release)* | Initial release: both portals, Sheets sync, Drive photos, QR reports, offline fallback |
+
+Add a row here for every release and push a matching `v*` tag (see below).
+
+### Releasing a new APK
+
+Releases are built by GitHub Actions ([`.github/workflows/android-build.yml`](.github/workflows/android-build.yml))
+on every push to `main` and on `v*` tags; only tag builds publish a GitHub Release with the
+APK as a release asset. To cut a release:
+
+1. Bump `version` in `package.json` (semver: `1.0.0` → `1.0.1` bug fixes / `1.1.0` features /
+   `2.0.0` major changes). The workflow propagates it into the APK (`versionName` +
+   `versionCode`) automatically.
+2. Commit, then tag and push:
+
+   ```bash
+   git tag v1.0.1
+   git push origin main v1.0.1
+   ```
+
+3. The workflow builds, **verifies the APK** (`apksigner` signature check and `aapt`
+   badging), attaches `FIXIT-AI.apk` to the release, and previous versions stay available
+   on the releases page.
+4. Add a row to the [version history](#version-history) above describing what changed.
+
+The one-time repository setup this needs is in [Release signing](#release-signing). The
+workflow fails with a clear message when something is missing rather than publishing a
+broken APK.
+
+### Release signing
+
+The release keystore lives **outside this repository** so it can never be committed:
+
+```
+D:\fixit-ai-signing\fixit-release.keystore           the key itself — never share, never commit
+D:\fixit-ai-signing\fixit-release.keystore.base64.txt paste as the GitHub secret below
+D:\fixit-ai-signing\CREDENTIALS.txt                   key alias + password — keep private
+```
+
+Configure once in the GitHub repository under **Settings → Secrets and variables → Actions**:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| Variable | `CAP_SERVER_URL` | the production origin the APK loads, e.g. `https://fixit.example.com` — must be https, never localhost |
+| Secret | `FIXIT_KEYSTORE_BASE64` | full contents of `fixit-release.keystore.base64.txt` |
+| Secret | `FIXIT_KEYSTORE_PASSWORD` | the password from `CREDENTIALS.txt` |
+| Secret | `FIXIT_KEY_ALIAS` | `fixit` |
+
+Gradle reads signing from these environment variables (`android/app/build.gradle`), so no
+key material ever enters the repository. **If the keystore is lost, installed apps can no
+longer be upgraded in place** — keep a second copy somewhere safe (password manager,
+encrypted USB).
+
+> Local builds without these environment variables fall back to debug signing — fine for
+> testing the pipeline, never for distribution.
+
+### Building the APK locally
+
+Requires JDK 21 and an Android SDK with platform 35. Then:
+
+```powershell
+$env:CAP_SERVER_URL = 'https://fixit.example.com'   # your deployed origin
+npm run build                  # web app -> dist/client (offline.html included)
+npm run android:offline        # bake the retry URL into the offline page
+npx cap sync android           # web assets + server URL -> android project
+npm run android:version        # package.json version -> versionName/versionCode
+
+$env:FIXIT_KEYSTORE_PATH     = 'D:\fixit-ai-signing\fixit-release.keystore'
+$env:FIXIT_KEYSTORE_PASSWORD = '<from CREDENTIALS.txt>'
+$env:FIXIT_KEY_ALIAS         = 'fixit'
+cd android
+.\gradlew.bat assembleRelease --no-daemon
+```
+
+The APK lands in `android/app/build/outputs/apk/release/app-release.apk` (the workflow runs
+`apksigner verify` and `aapt dump badging` on it before publishing). Brand icon/splash
+sources live in `assets/` — regenerate with `npm run assets:brand` followed by
+`npx capacitor-assets generate --android` after any change.
 
 ## Security
 
