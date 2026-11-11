@@ -638,6 +638,39 @@ separate database and no demo credentials.
 
 Add a row here for every release and push a matching `v*` tag (see below).
 
+### First push to GitHub (one-time)
+
+The project is already a local git repository (branch `main`). To publish it, sign in once
+with the GitHub CLI — a browser window opens, and no password is typed into the repo or
+terminal (the token is stored in Windows Credential Manager):
+
+```powershell
+gh auth login          # pick: GitHub.com → HTTPS → authenticate Git: Yes → Login with a web browser
+gh auth setup-git      # git push/pull now reuse that login
+gh auth status         # should print "Logged in to github.com account <you>"
+```
+
+On this PC the portable CLI is already installed at `C:\gh\bin\gh.exe` and on `PATH`; on
+any other machine get it from <https://cli.github.com/>. Then create the **private**
+repository and push everything in one command from the project root:
+
+```powershell
+gh repo create fixit-ai --private --source . --remote origin --push
+```
+
+This creates `github.com/<you>/fixit-ai` (private — the Sheets gateway credentials live in
+`server/sheets/appsscript/Code.gs`), registers it as `origin`, and pushes `main`.
+Next, configure the repository variable and secrets from
+[Release signing](#release-signing), then tag the first release:
+
+```powershell
+git tag v1.0.0
+git push origin main v1.0.0
+```
+
+Once that release exists, run `npm run android:qr -- <owner/repo>` (see
+[Download](#download)) to publish the real download link and verified QR code.
+
 ### Releasing a new APK
 
 Releases are built by GitHub Actions ([`.github/workflows/android-build.yml`](.github/workflows/android-build.yml))
@@ -659,8 +692,9 @@ APK as a release asset. To cut a release:
    on the releases page.
 4. Add a row to the [version history](#version-history) above describing what changed.
 
-The one-time repository setup this needs is in [Release signing](#release-signing). The
-workflow fails with a clear message when something is missing rather than publishing a
+The one-time repository setup this needs is in
+[First push to GitHub](#first-push-to-github-one-time) and [Release signing](#release-signing).
+The workflow fails with a clear message when something is missing rather than publishing a
 broken APK.
 
 ### Release signing
