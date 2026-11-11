@@ -1,0 +1,527 @@
+// FIXIT AI — data model
+// SQLite is used for zero-setup local development. The schema avoids
+// engine-specific types so the datasource can be switched to postgresql.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String   @id @default(cuid())
+  userId              String?  @unique
+  email               String   @unique
+  passwordHash        String
+  name                String
+  role                String   @default("TECHNICIAN") // OWNER | TECHNICIAN
+  phone               String?
+  profileImageUrl     String?
+  emailVerified       Boolean  @default(false)
+  accountStatus       String   @default("ACTIVE") // ACTIVE | INACTIVE | SUSPENDED
+  mustChangePassword  Boolean  @default(false)
+  designation         String?
+  joiningDate         DateTime @default(now())
+  lastLogin           DateTime?
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  technician          Technician?
+  sessions            Session[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  createdRepairs      Repair[]               @relation("RepairCreatedBy")
+  createdQuotes       Quotation[]            @relation("QuoteCreatedBy")
+  approvedQuotes      Quotation[]            @relation("QuoteApprovedBy")
+  payments            Payment[]
+  activities          RepairActivity[]
+  stockMoves          InventoryTransaction[]
+  createdReports      RepairReport[]         @relation("ReportCreatedBy")
+  createdDevices      Device[]               @relation("DeviceCreatedBy")
+  createdCustomers    Customer[]             @relation("CustomerCreatedBy")
+  expenses            Expense[]
+  partsAdded          RepairPart[]
+  resetRequests       PasswordResetRequest[]
+  emailTokens         EmailVerificationToken[]
+  activityLogs        AccountActivityLog[]
+  uploadedRepairImages RepairImage[]          @relation("RepairImageUploadedBy")
+}
+
+model Session {
+  id        String   @id // sha256 hash of the cookie token
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  ip        String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Shop {
+  id                     String   @id @default("shop")
+  name                   String   @default("FIXIT AI Repair Lab")
+  legalName              String?
+  phone                  String?
+  email                  String?
+  address                String?
+  gstin                  String?
+  logoPath               String?
+  currency               String   @default("INR")
+  taxRate                Float    @default(0)
+  ownerApprovalThreshold Float    @default(0)
+  reportBaseUrl          String?
+  lowStockAlerts         Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model Technician {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  specialization String?
+  phone          String?
+  incentiveRate  Float    @default(10) // % of labour charge
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repairs    Repair[]              @relation("AssignedTechnician")
+  incentives TechnicianIncentive[]
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String   @unique // normalised digits; exact matches only — never fuzzy-merge
+  email       String?
+  address     String?
+  notes       String?
+  isDemo      Boolean  @default(false)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?    @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  devices   Device[]
+  repairs   Repair[]
+
+  @@index([phone])
+  @@index([name])
+}
+
+model Device {
+  id             String   @id @default(cuid())
+  customerId     String
+  category       String // Smartphone | Laptop | Tablet | Keypad Phone | Other
+  brand          String
+  model          String
+  imei           String?
+  serialNumber   String?
+  color          String?
+  accessories    String?
+  conditionNotes String?
+  imagePath      String?
+  isDemo         Boolean  @default(false)
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation("DeviceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  repairs   Repair[]
+
+  @@index([customerId])
+  @@index([brand, model])
+}
+
+model Repair {
+  id                  String    @id @default(cuid())
+  code                String    @unique
+  customerId          String
+  deviceId            String
+  technicianId        String?
+  createdById         String?
+  status              String    @default("NEW_REQUEST")
+  priority            String    @default("NORMAL") // LOW | NORMAL | HIGH | URGENT
+  problem             String
+  internalNotes       String?
+  confirmedFault      String?
+  repairProcedure     String?
+  testingResults      String?
+  finalCondition      String?
+  warrantyDays        Int       @default(0)
+  warrantyTerms       String?
+  estimatedCompletion DateTime?
+  completedAt         DateTime?
+  deliveredAt         DateTime?
+  cancelledAt         DateTime?
+  reportToken         String?   @unique
+  reportPublishedAt   DateTime?
+  isDemo              Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  customer    Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  device      Device               @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  technician  Technician?          @relation("AssignedTechnician", fields: [technicianId], references: [id], onDelete: SetNull)
+  createdBy   User?                @relation("RepairCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  diagnostics RepairDiagnostic[]
+  activities  RepairActivity[]
+  parts       RepairPart[]
+  quotations  Quotation[]
+  payments    Payment[]
+  incentives  TechnicianIncentive[]
+  report      RepairReport?
+  warranty    WarrantyRecord?
+  feedback    CustomerFeedback?
+  expenses    Expense[]
+  images      RepairImage[]
+
+  @@index([status])
+  @@index([technicianId])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+model RepairDiagnostic {
+  id               String   @id @default(cuid())
+  repairId         String
+  mode             String // AI | LOCAL_RULESET | MANUAL
+  provider         String?
+  model            String?
+  summary          String
+  causes           String   @default("[]") // JSON array
+  tests            String   @default("[]") // JSON array
+  parts            String   @default("[]") // JSON array
+  difficulty       String?
+  estimatedMinutes Int?
+  confidence       Float?
+  sources          String   @default("[]") // JSON array of {title,url}
+  rawText          String?
+  createdById      String?
+  createdAt        DateTime @default(now())
+
+  repair Repair @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  @@index([repairId, createdAt])
+}
+
+model RepairActivity {
+  id        String   @id @default(cuid())
+  repairId  String
+  userId    String?
+  type      String // STATUS | NOTE | PART | QUOTE | PAYMENT | DIAGNOSIS | REPORT | WARRANTY
+  note      String
+  meta      String? // JSON
+  createdAt DateTime @default(now())
+
+  repair Repair @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([repairId, createdAt])
+}
+
+model RepairImage {
+  id           String   @id @default(cuid())
+  repairId     String
+  imagePath    String
+  kind         String   // BEFORE | AFTER | EVIDENCE
+  caption      String?
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  repair     Repair @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  uploadedBy User?  @relation("RepairImageUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([repairId, kind, createdAt])
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  website   String?
+  notes     String?
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  parts SparePart[]
+}
+
+model SparePart {
+  id               String   @id @default(cuid())
+  sku              String   @unique
+  name             String
+  category         String
+  brand            String?
+  compatibleModels String   @default("")
+  quality          String   @default("Compatible") // OEM | Compatible | Refurbished | Used | Aftermarket
+  supplierId       String?
+  purchasePrice    Float    @default(0)
+  sellingPrice     Float    @default(0)
+  quantity         Int      @default(0)
+  minStock         Int      @default(2)
+  location         String?
+  isDemo           Boolean  @default(false)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  supplier     Supplier?              @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  repairParts  RepairPart[]
+  transactions InventoryTransaction[]
+
+  @@index([name])
+  @@index([category])
+}
+
+model RepairPart {
+  id             String    @id @default(cuid())
+  repairId       String
+  sparePartId    String?
+  name           String
+  quality        String    @default("Compatible")
+  supplierName   String?
+  sourceUrl      String?
+  priceSource    String    @default("MANUAL") // INVENTORY | MANUAL | VERIFIED_LISTING | ESTIMATE
+  lastCheckedAt  DateTime?
+  unitPrice      Float     @default(0) // charged to customer
+  unitCost       Float     @default(0) // actual purchase cost (internal)
+  quantity       Int       @default(1)
+  isEstimated    Boolean   @default(true)
+  note           String?
+  addedById      String?
+  createdAt      DateTime  @default(now())
+
+  repair    Repair     @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  sparePart SparePart? @relation(fields: [sparePartId], references: [id], onDelete: SetNull)
+  addedBy   User?      @relation(fields: [addedById], references: [id], onDelete: SetNull)
+
+  @@index([repairId])
+}
+
+model InventoryTransaction {
+  id        String   @id @default(cuid())
+  partId    String
+  type      String // IN | OUT | ADJUST
+  quantity  Int
+  unitCost  Float    @default(0)
+  repairId  String?
+  note      String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  part SparePart @relation(fields: [partId], references: [id], onDelete: Cascade)
+  user User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([partId, createdAt])
+}
+
+model Quotation {
+  id                  String    @id @default(cuid())
+  repairId            String
+  version             Int       @default(1)
+  status              String    @default("DRAFT") // DRAFT | PENDING_OWNER | APPROVED | REJECTED
+  partsTotal          Float     @default(0)
+  labourCharge        Float     @default(0)
+  otherExpenses       Float     @default(0)
+  taxRate             Float     @default(0)
+  taxAmount           Float     @default(0)
+  discount            Float     @default(0)
+  customerTotal       Float     @default(0)
+  estimatedPartsCost  Float     @default(0)
+  actualPartsCost     Float     @default(0)
+  otherCost           Float     @default(0)
+  technicianIncentive Float     @default(0)
+  netProfit           Float     @default(0)
+  notes               String?
+  customerDecision    String    @default("PENDING") // PENDING | ACCEPTED | REJECTED
+  decidedAt           DateTime?
+  createdById         String?
+  approvedById        String?
+  approvedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  repair    Repair @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("QuoteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy User? @relation("QuoteApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([repairId, version])
+  @@index([status])
+}
+
+model Payment {
+  id           String   @id @default(cuid())
+  repairId     String
+  amount       Float
+  method       String   @default("CASH") // CASH | UPI | CARD | BANK | OTHER
+  reference    String?
+  notes        String?
+  paidAt       DateTime @default(now())
+  recordedById String?
+  createdAt    DateTime @default(now())
+
+  repair     Repair @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  recordedBy User?  @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([repairId])
+  @@index([paidAt])
+}
+
+model TechnicianIncentive {
+  id           String   @id @default(cuid())
+  technicianId String
+  repairId     String?
+  amount       Float
+  type         String   @default("PER_REPAIR") // PER_REPAIR | MONTHLY | ADJUSTMENT
+  note         String?
+  period       String?
+  createdAt    DateTime @default(now())
+
+  technician Technician @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+  repair     Repair?    @relation(fields: [repairId], references: [id], onDelete: SetNull)
+
+  @@index([technicianId, createdAt])
+}
+
+model RepairReport {
+  id          String   @id @default(cuid())
+  repairId    String   @unique
+  token       String   @unique
+  snapshot    String // JSON, public-safe fields only
+  publishedAt DateTime @default(now())
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  repair    Repair @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("ReportCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+}
+
+model WarrantyRecord {
+  id        String   @id @default(cuid())
+  repairId  String   @unique
+  days      Int
+  startDate DateTime @default(now())
+  endDate   DateTime
+  terms     String?
+  createdAt DateTime @default(now())
+
+  repair Repair @relation(fields: [repairId], references: [id], onDelete: Cascade)
+}
+
+model CustomerFeedback {
+  id        String   @id @default(cuid())
+  repairId  String   @unique
+  rating    Int      @default(5)
+  comment   String?
+  createdAt DateTime @default(now())
+
+  repair Repair @relation(fields: [repairId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  role      String?
+  type      String   @default("INFO")
+  title     String
+  body      String?
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([role, read])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  meta      String? // JSON
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  category    String
+  amount      Float
+  note        String?
+  incurredAt  DateTime @default(now())
+  repairId    String?
+  createdById String?
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  repair    Repair? @relation(fields: [repairId], references: [id], onDelete: SetNull)
+  createdBy User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([incurredAt])
+}
+
+model PasswordResetRequest {
+  id                String    @id @default(cuid())
+  userId            String
+  requestDate       DateTime  @default(now())
+  requestStatus     String    @default("PENDING") // PENDING | APPROVED | COMPLETED | REJECTED
+  approvedBy        String?
+  resetTokenHash    String?
+  expiresAt         DateTime
+  completedAt       DateTime?
+  notes             String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([requestStatus])
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(cuid())
+  userId     String
+  email      String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model AccountActivityLog {
+  id                  String   @id @default(cuid())
+  userId              String
+  activityType        String // LOGIN | LOGOUT | PASSWORD_RESET_REQUESTED | PASSWORD_RESET_APPROVED | PASSWORD_RESET_COMPLETED | PROFILE_UPDATED | EMAIL_CHANGED | ACCOUNT_CREATED | ACCOUNT_STATUS_CHANGED
+  activityDescription String
+  ip                  String?
+  timestamp           DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([timestamp])
+}

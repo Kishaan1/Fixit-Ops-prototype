@@ -1,0 +1,85 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace "com.fixitai.app"
+    compileSdk rootProject.ext.compileSdkVersion
+
+    // Release signing is injected through environment variables (GitHub Actions
+    // secrets or a local shell) — signing keys are never committed to the repo.
+    //   FIXIT_KEYSTORE_PATH     absolute path to the .keystore file
+    //   FIXIT_KEYSTORE_PASSWORD keystore password
+    //   FIXIT_KEY_ALIAS         key alias inside the keystore
+    //   FIXIT_KEY_PASSWORD      key password (falls back to the keystore password)
+    def fixitKeystorePath = System.getenv("FIXIT_KEYSTORE_PATH")
+    def fixitKeystorePassword = System.getenv("FIXIT_KEYSTORE_PASSWORD")
+    def fixitKeyAlias = System.getenv("FIXIT_KEY_ALIAS")
+    def fixitKeyPassword = System.getenv("FIXIT_KEY_PASSWORD")
+    def hasReleaseSigning = fixitKeystorePath != null && !fixitKeystorePath.trim().isEmpty()
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(fixitKeystorePath)
+                storePassword fixitKeystorePassword
+                keyAlias fixitKeyAlias
+                keyPassword fixitKeyPassword != null && !fixitKeyPassword.trim().isEmpty() ? fixitKeyPassword : fixitKeystorePassword
+            }
+        }
+    }
+
+    defaultConfig {
+        applicationId "com.fixitai.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1000000
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            } else {
+                // Local builds without keystore env vars fall back to the debug key so the
+                // pipeline stays testable. CI release builds always provide real signing.
+                signingConfig signingConfigs.debug
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

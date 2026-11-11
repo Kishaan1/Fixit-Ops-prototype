@@ -1,0 +1,287 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens (Tailwind v4).
+ *
+ * Every --color-* token below is turned into utilities by Tailwind v4
+ * (bg-surface, text-text-secondary, border-border, ring-primary/20, ...) and
+ * published as a CSS variable on :root. The dark theme simply re-declares the
+ * variables on html.dark, so every utility, chart and inline style follows
+ * the active theme without duplicate rules.
+ */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --color-bg: #f8fafc;
+  --color-bg-subtle: #f1f5f9;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f8fafc;
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-primary: #0891b2;
+  --color-primary-hover: #0e7490;
+  --color-primary-light: #cffafe;
+  --color-rose: #dc2626;
+  --color-rose-hover: #b91c1c;
+  --color-rose-light: #fecaca;
+  --color-border: #cbd5e1;
+  --color-border-soft: #94a3b8;
+  --color-divider: #e2e8f0;
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-error: #b91c1c;
+  --color-emerald: #059669;
+}
+
+/* Dark theme — flipping the variables restyles every token-based utility. */
+html.dark {
+  --color-bg: #0f172a;
+  --color-bg-subtle: #1e293b;
+  --color-surface: #1e293b;
+  --color-surface-subtle: #0f172a;
+  --color-text: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #7c8ba1;
+  --color-primary: #06b6d4;
+  --color-primary-hover: #22d3ee;
+  --color-primary-light: #164e63;
+  --color-rose: #f87171;
+  --color-rose-hover: #ef4444;
+  --color-rose-light: #7f1d1d;
+  --color-border: #334155;
+  --color-border-soft: #1e293b;
+  --color-divider: #374151;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #f87171;
+  --color-emerald: #10b981;
+}
+
+/*
+ * Custom classes live in the components layer on purpose: layered utilities
+ * still override them, so per-component padding (e.g. pl-12 on icon inputs)
+ * keeps working.
+ */
+@layer components {
+  /* ---------- Form controls ---------- */
+
+  .field-input {
+    @apply w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm leading-[1.6] text-text outline-none transition-colors placeholder:text-text-muted focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-bg-subtle disabled:text-text-muted;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium leading-snug text-text-secondary;
+  }
+
+  .field-input[type='search']::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* The chevron is a data URI, so it cannot use var(): give each theme its own. */
+  .select-field {
+    @apply appearance-none bg-none pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem 1rem;
+  }
+
+  html.dark .select-field {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- Buttons ---------- */
+
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-sm {
+    @apply rounded-lg px-3 py-1.5 text-xs;
+  }
+
+  .btn-lg {
+    @apply rounded-2xl px-5 py-3 text-base;
+  }
+
+  /* ---------- Surfaces ---------- */
+
+  .surface {
+    @apply rounded-xl border border-border bg-surface shadow-sm;
+  }
+
+  /* ---------- Skeleton ---------- */
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg bg-bg-subtle;
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--color-text-muted) 25%, transparent) 35%,
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* ---------- Spinner ---------- */
+
+  .spinner {
+    @apply inline-block animate-spin;
+  }
+}
+
+/* ---------- Base ---------- */
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-bg text-text antialiased;
+    font-family: var(--font-sans);
+    min-height: 100dvh;
+    line-height: 1.5;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  /* Icons must not shrink to zero in flex rows */
+  svg.lucide {
+    flex-shrink: 0;
+  }
+}
+
+/* ---------- Scrollbar ---------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-border) 45%, transparent);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: color-mix(in oklab, var(--color-border) 45%, transparent);
+  border: 2px solid transparent;
+}
+
+/* ---------- Selection ---------- */
+
+::selection {
+  background-color: color-mix(in oklab, var(--color-primary) 30%, transparent);
+}
+
+/* ---------- Animations ---------- */
+
+.fade-in {
+  animation: fade-in 160ms ease-out;
+}
+
+.toast-in {
+  animation: toast-in 180ms ease-out;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+
+  .toast-in,
+  .fade-in,
+  .skeleton::after {
+    animation: none;
+  }
+}
+
+/* ---------- Print ---------- */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #0f172a !important;
+  }
+
+  .print-page {
+    box-shadow: none !important;
+    border: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}

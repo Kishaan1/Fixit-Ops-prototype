@@ -1,0 +1,142 @@
+name: Android APK
+
+# Builds the installable FIXIT-AI.apk and publishes it as a GitHub Release asset
+# when a v* tag is pushed. Branch builds upload the APK as a workflow artifact.
+#
+# Required repository configuration (see README → "Android app"):
+#   Variables:  CAP_SERVER_URL            https origin of the deployed FIXIT AI server
+#   Secrets:    FIXIT_KEYSTORE_BASE64      base64 of the release keystore file
+#               FIXIT_KEYSTORE_PASSWORD    keystore password
+#               FIXIT_KEY_ALIAS            key alias inside the keystore
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Build FIXIT-AI.apk
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check production server URL
+        env:
+          CAP_SERVER_URL: ${{ vars.CAP_SERVER_URL }}
+        run: |
+          if [ -z "$CAP_SERVER_URL" ]; then
+            echo "::error::CAP_SERVER_URL is not set. Add it under Settings > Secrets and variables > Actions > Variables — the https origin of the deployed FIXIT AI server."
+            exit 1
+          fi
+          case "$CAP_SERVER_URL" in
+            https://*) ;;
+            *) echo "::error::CAP_SERVER_URL must start with https:// (got: $CAP_SERVER_URL)"; exit 1 ;;
+          esac
+          case "$CAP_SERVER_URL" in
+            https://localhost*|https://127.0.0.1*|https://10.*|https://192.168.*)
+              echo "::error::CAP_SERVER_URL must be the production deployment, never a local address."; exit 1 ;;
+          esac
+          echo "APK will load $CAP_SERVER_URL"
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Bake offline fallback page
+        env:
+          CAP_SERVER_URL: ${{ vars.CAP_SERVER_URL }}
+        run: npm run android:offline
+
+      - name: Sync Capacitor Android project
+        env:
+          CAP_SERVER_URL: ${{ vars.CAP_SERVER_URL }}
+        run: npx cap sync android
+
+      - name: Set Android version from package.json
+        run: npm run android:version
+
+      - name: Decode signing keystore
+        env:
+          FIXIT_KEYSTORE_BASE64: ${{ secrets.FIXIT_KEYSTORE_BASE64 }}
+          FIXIT_KEYSTORE_PASSWORD: ${{ secrets.FIXIT_KEYSTORE_PASSWORD }}
+          FIXIT_KEY_ALIAS: ${{ secrets.FIXIT_KEY_ALIAS }}
+        run: |
+          if [ -z "$FIXIT_KEYSTORE_BASE64" ]; then
+            if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              echo "::error::Release tag builds require the signing secrets FIXIT_KEYSTORE_BASE64, FIXIT_KEYSTORE_PASSWORD and FIXIT_KEY_ALIAS. See README > Android app > Release signing."
+              exit 1
+            fi
+            echo "::warning::Keystore secrets are not set — building a debug-signed APK (fine for pipeline testing, not for releases)."
+            touch /tmp/fixit-release.keystore
+            exit 0
+          fi
+          if [ -z "$FIXIT_KEYSTORE_PASSWORD" ] || [ -z "$FIXIT_KEY_ALIAS" ]; then
+            echo "::error::FIXIT_KEYSTORE_BASE64 is set, but FIXIT_KEYSTORE_PASSWORD / FIXIT_KEY_ALIAS are missing. Configure all three together."
+            exit 1
+          fi
+          echo "$FIXIT_KEYSTORE_BASE64" | base64 --decode > /tmp/fixit-release.keystore
+          echo "Keystore decoded."
+
+      - name: Build release APK
+        working-directory: android
+        env:
+          FIXIT_KEYSTORE_PATH: /tmp/fixit-release.keystore
+          FIXIT_KEYSTORE_PASSWORD: ${{ secrets.FIXIT_KEYSTORE_PASSWORD }}
+          FIXIT_KEY_ALIAS: ${{ secrets.FIXIT_KEY_ALIAS }}
+        run: |
+          if [ ! -s "$FIXIT_KEYSTORE_PATH" ]; then unset FIXIT_KEYSTORE_PATH; fi
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Collect APK
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk FIXIT-AI.apk
+          ls -lh FIXIT-AI.apk
+
+      - name: Verify APK exists and is a valid signed package
+        run: |
+          BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n1)"
+          "$BUILD_TOOLS/apksigner" verify --print-certs FIXIT-AI.apk
+          "$BUILD_TOOLS/aapt" dump badging FIXIT-AI.apk | grep -E "^(package|application-label|sdkVersion|targetSdkVersion|uses-permission)"
+          echo "APK verified OK"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FIXIT-AI-apk
+          path: FIXIT-AI.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub Release (v* tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: FIXIT-AI.apk
+          generate_release_notes: true
+          fail_on_unmatched_files: true

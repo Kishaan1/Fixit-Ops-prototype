@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FIXIT AI — Offline</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: linear-gradient(160deg, #0b1220 0%, #101b31 55%, #0d1a2f 100%);
+      color: #e6edf6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .card { max-width: 420px; width: 100%; text-align: center; }
+    .mark {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 28px;
+      border-radius: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(160deg, #0d1a2e 0%, #0a1424 100%);
+      border: 3px solid #6366f1;
+      box-shadow: 0 12px 40px rgba(99, 102, 241, 0.35);
+      font-size: 52px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      color: #fff;
+    }
+    h1 { font-size: 26px; font-weight: 700; letter-spacing: 0.5px; }
+    h1 .ai {
+      background: linear-gradient(90deg, #22d3ee, #8b5cf6);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    p.lead { margin-top: 10px; font-size: 15.5px; line-height: 1.55; color: #9fb0c6; }
+    button {
+      margin-top: 28px;
+      width: 100%;
+      padding: 15px 0;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      color: #06121f;
+      background: linear-gradient(90deg, #22d3ee, #6366f1);
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+    button:active { transform: scale(0.98); }
+    .countdown { margin-top: 16px; font-size: 13px; color: #64748b; min-height: 18px; }
+    .footer {
+      margin-top: 40px;
+      font-size: 12px;
+      color: #475569;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="mark">F</div>
+    <h1>FIXIT <span class="ai">AI</span></h1>
+    <p class="lead">
+      Can't reach the FIXIT AI service right now.<br>
+      Check your internet connection and try again.
+    </p>
+    <button id="retry">Try again</button>
+    <p class="countdown" id="countdown"></p>
+    <p class="footer">FIXIT AI · Repair Shop Management</p>
+  </main>
+  <script>
+    (function () {
+      // __CAP_SERVER_URL__ is replaced with the production server URL by
+      // scripts/finalize-offline-page.ts right after `npm run build`.
+      var TARGET = '__CAP_SERVER_URL__'
+      var CONFIGURED = TARGET.length > 0 && TARGET.indexOf('__') === -1
+
+      function retry() {
+        if (CONFIGURED) {
+          window.location.replace(TARGET)
+        } else {
+          window.location.reload()
+        }
+      }
+
+      document.getElementById('retry').addEventListener('click', retry)
+
+      var left = 30
+      var el = document.getElementById('countdown')
+      function tick() {
+        if (left <= 0) return retry()
+        el.textContent = 'Retrying automatically in ' + left + 's'
+        left--
+      }
+      tick()
+      setInterval(tick, 1000)
+    })()
+  </script>
+</body>
+</html>

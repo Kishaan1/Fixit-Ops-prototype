@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FixIt AI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --surface2:#eef1f4; --border:#dde2e7;
+  --text:#14181d; --muted:#5b6672; --accent:#0ea5e9; --accent2:#06b6d4;
+  --good:#16a34a; --warn:#d97706; --bad:#dc2626;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10151b; --surface:#171e26; --surface2:#1e2731;
+    --border:#2a3440; --text:#e6edf3; --muted:#8b98a5;
+    --accent:#22d3ee; --accent2:#0ea5e9; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10151b; --surface:#171e26; --surface2:#1e2731;
+  --border:#2a3440; --text:#e6edf3; --muted:#8b98a5;
+  --accent:#22d3ee; --accent2:#0ea5e9; color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:20;background:var(--surface)}
+header{position:sticky; top:0; z-index:10; background:var(--surface); border-bottom:1px solid var(--border);
+  padding:14px 18px; padding-top:calc(14px + env(safe-area-inset-top,0px)); display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+.logo{font-weight:700; font-size:18px; letter-spacing:.2px}
+.logo span{color:var(--accent)}
+.rolebar{display:flex; gap:6px; margin-left:auto; background:var(--surface2); padding:4px; border-radius:10px}
+.rolebtn{border:none; background:transparent; color:var(--muted); padding:7px 12px; border-radius:7px; font-size:13px; cursor:pointer}
+.rolebtn.active{background:var(--accent); color:#06212b; font-weight:600}
+nav.tabs{display:flex; gap:4px; padding:10px 18px; overflow-x:auto; border-bottom:1px solid var(--border); background:var(--surface)}
+.tab{border:none; background:transparent; color:var(--muted); padding:8px 14px; border-radius:8px; font-size:13.5px; cursor:pointer; white-space:nowrap}
+.tab.active{background:var(--surface2); color:var(--text); font-weight:600}
+main{max-width:980px; margin:0 auto; padding:20px 16px 60px}
+.grid{display:grid; gap:14px}
+.cards4{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px}
+.kpi .n{font-size:24px; font-weight:700}
+.kpi .l{font-size:12px; color:var(--muted); margin-top:4px}
+h2{font-size:17px; margin:22px 0 10px}
+.panel{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px}
+label{display:block; font-size:12.5px; color:var(--muted); margin:10px 0 4px}
+input,select,textarea{width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:14px; font-family:inherit}
+textarea{min-height:70px; resize:vertical}
+.btn{background:var(--accent); color:#06212b; border:none; padding:10px 16px; border-radius:8px; font-weight:600; font-size:13.5px; cursor:pointer}
+.btn.secondary{background:var(--surface2); color:var(--text); border:1px solid var(--border)}
+.btn:disabled{opacity:.5; cursor:default}
+.row{display:flex; gap:10px; flex-wrap:wrap}
+.row>*{flex:1; min-width:140px}
+table{width:100%; border-collapse:collapse; font-size:13.5px}
+th,td{text-align:left; padding:9px 8px; border-bottom:1px solid var(--border)}
+th{color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.3px}
+tr:hover td{background:var(--surface2)}
+.badge{padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:600; display:inline-block}
+.b-new{background:#3b82f633; color:#60a5fa}
+.b-progress{background:#d9770633; color:#f59e0b}
+.b-done{background:#16a34a33; color:#4ade80}
+.b-wait{background:#8b5cf633; color:#a78bfa}
+.repair-item{cursor:pointer}
+.detail-back{background:none;border:none;color:var(--accent);cursor:pointer;font-size:13.5px;padding:0;margin-bottom:12px}
+.timeline{list-style:none; padding:0; margin:0; border-left:2px solid var(--border); margin-left:6px}
+.timeline li{padding:0 0 14px 16px; position:relative; font-size:13.5px}
+.timeline li::before{content:""; position:absolute; left:-6px; top:3px; width:9px; height:9px; border-radius:50%; background:var(--accent)}
+.timeline .t{color:var(--muted); font-size:11.5px}
+.ai-box{background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px; font-size:13.5px; line-height:1.55; white-space:pre-wrap}
+.disclaimer{font-size:11.5px; color:var(--muted); margin-top:6px; border-left:2px solid var(--warn); padding-left:8px}
+.qr-wrap{display:flex; gap:18px; align-items:center; flex-wrap:wrap}
+.pill{font-size:11px; color:var(--muted); border:1px solid var(--border); padding:2px 8px; border-radius:20px}
+.empty{color:var(--muted); font-size:13.5px; padding:20px; text-align:center}
+.spinner{display:inline-block; width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cost-line{display:flex; justify-content:space-between; font-size:13.5px; padding:5px 0; border-bottom:1px dashed var(--border)}
+.cost-line.total{font-weight:700; border-bottom:none; border-top:1px solid var(--border); margin-top:4px; padding-top:8px}
+.overflow{overflow-x:auto}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Fix<span>It</span> AI</div>
+  <div class="rolebar" id="roleBar"></div>
+</header>
+<nav class="tabs" id="tabBar"></nav>
+<main id="main"></main>
+
+<script>
+(function(){
+"use strict";
+
+// ---------- state ----------
+let db=null, userCap=null, sample=null, uid=null;
+let role = localStorage.getItem('fixit_role') || 'owner';
+let view = 'dashboard';
+let repairs = []; // mirrored from db
+let activeRepairId = null;
+let diagnosing = false;
+
+const ROLES = [
+  {id:'owner', label:'Owner'},
+  {id:'tech', label:'Technician'},
+  {id:'customer', label:'Customer'}
+];
+const TABS = {
+  owner: [['dashboard','Dashboard'],['newrepair','New Repair'],['repairs','Repairs'],['customers','Customers']],
+  tech: [['newrepair','New Repair'],['repairs','My Repairs']],
+  customer: [['lookup','Find My Report']]
+};
+const STATUS_FLOW = ['New Request','Diagnosis','Estimate Sent','Repair In Progress','Quality Check','Ready for Pickup','Delivered'];
+const STATUS_CLASS = s => s==='Delivered'||s==='Ready for Pickup' ? 'b-done' : s==='New Request' ? 'b-new' : s==='Estimate Sent' ? 'b-wait' : 'b-progress';
+
+function uid4(){ return Math.random().toString(36).slice(2,10); }
+function money(n){ return '₹' + (Math.round((n||0)*100)/100).toLocaleString('en-IN'); }
+function esc(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ---------- boot ----------
+async function boot(){
+  try{
+    userCap = await claude.use("user");
+    db = await claude.use("db");
+    sample = await claude.use("sample");
+  }catch(e){}
+  if(userCap){ try{ uid = await userCap.id(); }catch(e){} }
+  renderShell();
+  loadRepairs();
+}
+
+function renderShell(){
+  const rb = document.getElementById('roleBar');
+  rb.innerHTML = ROLES.map(r=>`<button class="rolebtn ${r.id===role?'active':''}" data-role="${r.id}">${r.label}</button>`).join('');
+  rb.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    role=b.dataset.role; localStorage.setItem('fixit_role',role);
+    view = TABS[role][0][0];
+    renderShell(); renderView();
+  });
+  const tb = document.getElementById('tabBar');
+  const tabs = TABS[role];
+  if(!tabs.find(t=>t[0]===view)) view = tabs[0][0];
+  tb.innerHTML = tabs.map(t=>`<button class="tab ${t[0]===view?'active':''}" data-v="${t[0]}">${t[1]}</button>`).join('');
+  tb.querySelectorAll('button').forEach(b=>b.onclick=()=>{ view=b.dataset.v; renderShell(); renderView(); });
+}
+
+// ---------- data ----------
+async function loadRepairs(){
+  if(!db){ renderView(); return; }
+  try{
+    const col = db.collection('repairs');
+    col.onSnapshot((docs)=>{
+      repairs = docs.map(d=>d.data).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      renderView();
+    });
+  }catch(e){ renderView(); }
+}
+
+async function saveRepair(r){
+  if(!db){ repairs.unshift(r); renderView(); return; }
+  try{ await db.collection('repairs').doc(r.id).set(r); }
+  catch(e){ console.error(e); }
+}
+async function updateRepair(id, patch){
+  const r = repairs.find(x=>x.id===id); if(!r) return;
+  Object.assign(r, patch);
+  if(!db){ renderView(); return; }
+  try{ await db.collection('repairs').doc(id).update(patch); }
+  catch(e){ console.error(e); }
+}
+
+// ---------- routing ----------
+function renderView(){
+  const m = document.getElementById('main');
+  if(location.hash.startsWith('#report-')){ return renderPublicReport(m); }
+  if(role==='owner' && view==='dashboard') return renderDashboard(m);
+  if(view==='newrepair') return renderNewRepair(m);
+  if(view==='repairs') return renderRepairsList(m);
+  if(view==='customers') return renderCustomers(m);
+  if(view==='lookup') return renderLookup(m);
+  m.innerHTML = '<div class="empty">Nothing here yet.</div>';
+}
+window.addEventListener('hashchange', renderView);
+
+// ---------- dashboard ----------
+function renderDashboard(m){
+  const total = repairs.length;
+  const completed = repairs.filter(r=>r.status==='Delivered').length;
+  const pending = repairs.filter(r=>r.status!=='Delivered').length;
+  const revenue = repairs.reduce((s,r)=> s + (r.payment?.customerTotal||0), 0);
+  const cost = repairs.reduce((s,r)=> s + (r.payment?.actualPartsCost||0) + (r.payment?.otherExpenses||0), 0);
+  const profit = revenue - cost;
+  const byDevice = {};
+  repairs.forEach(r=>{ const k=r.device?.brand||'Unknown'; byDevice[k]=(byDevice[k]||0)+1; });
+  const deviceRows = Object.entries(byDevice).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+  m.innerHTML = `
+    <div class="grid cards4">
+      <div class="card kpi"><div class="n">${total}</div><div class="l">Total Repairs</div></div>
+      <div class="card kpi"><div class="n">${completed}</div><div class="l">Completed</div></div>
+      <div class="card kpi"><div class="n">${pending}</div><div class="l">Pending / Active</div></div>
+      <div class="card kpi"><div class="n">${money(revenue)}</div><div class="l">Revenue Collected</div></div>
+    </div>
+    <div class="grid cards4" style="margin-top:14px">
+      <div class="card kpi"><div class="n">${money(cost)}</div><div class="l">Parts + Expenses</div></div>
+      <div class="card kpi"><div class="n" style="color:${profit>=0?'var(--good)':'var(--bad)'}">${money(profit)}</div><div class="l">Net Profit</div></div>
+    </div>
+    <h2>Most Repaired Brands</h2>
+    <div class="panel">
+      ${deviceRows.length? `<table><tbody>${deviceRows.map(([k,v])=>`<tr><td>${esc(k)}</td><td style="text-align:right">${v} repair${v>1?'s':''}</td></tr>`).join('')}</tbody></table>`
+        : '<div class="empty">No repairs logged yet — create one from "New Repair".</div>'}
+    </div>
+    <h2>Recent Activity</h2>
+    ${repairsTable(repairs.slice(0,6))}
+  `;
+  wireRepairRows(m);
+}
+
+// ---------- new repair ----------
+function renderNewRepair(m){
+  m.innerHTML = `
+    <div class="panel">
+      <div class="row">
+        <div><label>Customer name</label><input id="cName" placeholder="e.g. Arun Kumar"></div>
+        <div><label>Phone number</label><input id="cPhone" placeholder="10-digit mobile"></div>
+      </div>
+      <div class="row">
+        <div><label>Device category</label>
+          <select id="dCat"><option>Smartphone</option><option>Laptop</option><option>Tablet</option><option>Keypad Phone</option><option>Other</option></select>
+        </div>
+        <div><label>Brand</label><input id="dBrand" placeholder="e.g. Samsung"></div>
+        <div><label>Model</label><input id="dModel" placeholder="e.g. Galaxy A54"></div>
+      </div>
+      <label>Customer-reported problem</label>
+      <textarea id="problem" placeholder="e.g. Phone is not charging, started 3 days ago"></textarea>
+      <div class="disclaimer">Device photo identification isn't wired up in this prototype — the model is entered manually. A production build would run image recognition here.</div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" id="btnCreate">Create Repair + Run AI Diagnosis</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnCreate').onclick = createRepairFlow;
+}
+
+async function createRepairFlow(){
+  const name = document.getElementById('cName').value.trim();
+  const phone = document.getElementById('cPhone').value.trim();
+  const cat = document.getElementById('dCat').value;
+  const brand = document.getElementById('dBrand').value.trim();
+  const model = document.getElementById('dModel').value.trim();
+  const problem = document.getElementById('problem').value.trim();
+  if(!name || !phone || !brand || !model || !problem){ alert('Please fill in customer, device and problem details.'); return; }
+
+  const r = {
+    id: uid4(),
+    createdAt: Date.now(),
+    status: 'New Request',
+    customer: {name, phone},
+    device: {category:cat, brand, model},
+    problem,
+    aiDiagnosis: null,
+    confirmedFault: '',
+    parts: [], // {name, supplier, price, category}
+    labour: 0,
+    payment: {customerTotal:0, actualPartsCost:0, otherExpenses:0, discount:0, tax:0},
+    timeline: [{t: Date.now(), text:'Repair request created', status:'New Request'}],
+  };
+  await saveRepair(r);
+  activeRepairId = r.id;
+  view = 'repairs';
+  renderShell();
+  renderRepairDetail(document.getElementById('main'), r.id);
+  await runAIDiagnosis(r.id);
+}
+
+async function runAIDiagnosis(id){
+  const r = repairs.find(x=>x.id===id) || {id};
+  diagnosing = true;
+  const box = document.getElementById('aiBox');
+  if(box) box.innerHTML = '<span class="spinner"></span> Researching known issues for this model…';
+  if(!sample){
+    diagnosing=false;
+    await updateRepair(id, {aiDiagnosis: 'AI diagnosis is unavailable in this session (the "sample" capability was not granted). Enter findings manually.'});
+    if(document.getElementById('aiBox')) renderRepairDetail(document.getElementById('main'), id);
+    return;
+  }
+  try{
+    const prompt = `You are a device repair diagnostic assistant for a repair shop. A technician has these details:
+Device: ${r.device?.brand} ${r.device?.model} (${r.device?.category})
+Customer-reported problem: "${r.problem}"
+
+Give a concise, structured diagnostic note with these sections, using plain text with short headers (no markdown bold/asterisks):
+1. Likely causes (ranked, most common first) — label this as AI-suggested possibilities, not confirmed faults
+2. Recommended diagnostic tests for the technician to run
+3. Typical spare parts involved (names only, no prices)
+4. Estimated repair difficulty (Easy/Moderate/Hard) and rough time
+Keep it under 180 words. Do not state any fault as confirmed — these are leads for the technician to verify.`;
+    const res = await sample(prompt, {modelTier:'default'});
+    diagnosing = false;
+    await updateRepair(id, {
+      aiDiagnosis: res.text,
+      timeline: [...(r.timeline||[]), {t: Date.now(), text:'AI diagnostic analysis completed', status:'Diagnosis'}],
+      status: r.status==='New Request' ? 'Diagnosis' : r.status
+    });
+  }catch(e){
+    diagnosing = false;
+    await updateRepair(id, {aiDiagnosis: 'AI diagnosis failed to complete. Enter findings manually below.'});
+  }
+  if(document.getElementById('aiBox')) renderRepairDetail(document.getElementById('main'), id);
+}
+
+// ---------- repairs list ----------
+function repairsTable(list){
+  if(!list.length) return '<div class="panel empty">No repairs yet.</div>';
+  return `<div class="panel overflow"><table><thead><tr><th>Customer</th><th>Device</th><th>Status</th><th>Amount</th></tr></thead><tbody>
+    ${list.map(r=>`<tr class="repair-item" data-id="${r.id}">
+      <td>${esc(r.customer?.name||'')}</td>
+      <td>${esc(r.device?.brand||'')} ${esc(r.device?.model||'')}</td>
+      <td><span class="badge ${STATUS_CLASS(r.status)}">${esc(r.status)}</span></td>
+      <td>${money(r.payment?.customerTotal)}</td>
+    </tr>`).join('')}
+  </tbody></table></div>`;
+}
+function wireRepairRows(m){
+  m.querySelectorAll('.repair-item').forEach(tr=>{
+    tr.onclick = ()=>{ activeRepairId = tr.dataset.id; renderRepairDetail(m, tr.dataset.id); };
+  });
+}
+function renderRepairsList(m){
+  m.innerHTML = `<h2 style="margin-top:0">Repairs</h2>` + repairsTable(repairs);
+  wireRepairRows(m);
+}
+
+// ---------- repair detail ----------
+function renderRepairDetail(m, id){
+  const r = repairs.find(x=>x.id===id);
+  if(!r){ renderRepairsList(m); return; }
+  const partsTotal = (r.parts||[]).reduce((s,p)=>s+(Number(p.price)||0),0);
+  const labour = Number(r.labour)||0;
+  const other = Number(r.payment?.otherExpenses)||0;
+  const tax = Number(r.payment?.tax)||0;
+  const discount = Number(r.payment?.discount)||0;
+  const customerTotal = Math.max(0, partsTotal + labour + other + tax - discount);
+
+  m.innerHTML = `
+    <button class="detail-back" id="back">&larr; Back to repairs</button>
+    <div class="panel">
+      <div class="row" style="align-items:center">
+        <div><strong>${esc(r.customer?.name)}</strong> · ${esc(r.customer?.phone)}</div>
+        <div style="text-align:right"><span class="badge ${STATUS_CLASS(r.status)}">${esc(r.status)}</span></div>
+      </div>
+      <div class="pill" style="margin-top:8px">${esc(r.device?.brand)} ${esc(r.device?.model)} — ${esc(r.device?.category)}</div>
+      <p style="font-size:13.5px; margin-top:12px"><strong>Reported problem:</strong> ${esc(r.problem)}</p>
+    </div>
+
+    <h2>AI Diagnostic Suggestions</h2>
+    <div class="panel">
+      <div class="ai-box" id="aiBox">${r.aiDiagnosis ? esc(r.aiDiagnosis) : (diagnosing ? '<span class="spinner"></span> Running…' : 'Not yet run.')}</div>
+      <div class="disclaimer">These are AI-suggested leads from the reported symptom, not confirmed faults. Only the technician's confirmed fault below is treated as diagnosis.</div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn secondary" id="btnRerun">${r.aiDiagnosis?'Re-run AI diagnosis':'Run AI diagnosis'}</button>
+      </div>
+      <label style="margin-top:14px">Technician-confirmed fault</label>
+      <input id="confirmedFault" value="${esc(r.confirmedFault||'')}" placeholder="e.g. Charging port connector damaged">
+      <div class="row"><button class="btn secondary" id="btnSaveFault">Save confirmed fault</button></div>
+    </div>
+
+    <h2>Spare Parts &amp; Cost Estimate</h2>
+    <div class="panel">
+      <div id="partsList">${partsRows(r)}</div>
+      <div class="row" style="margin-top:4px">
+        <div><label>Part name</label><input id="pName" placeholder="e.g. Display assembly"></div>
+        <div><label>Category</label><select id="pCat"><option>OEM</option><option>Compatible</option><option>Refurbished</option><option>Used</option></select></div>
+        <div><label>Price (₹)</label><input id="pPrice" type="number" min="0" placeholder="0"></div>
+        <div style="flex:0 0 auto; align-self:flex-end"><button class="btn secondary" id="btnAddPart">Add part</button></div>
+      </div>
+      <div class="disclaimer">Spare-part prices are entered manually here — this prototype does not scrape live marketplace prices, to avoid inventing figures.</div>
+      <div class="row" style="margin-top:14px">
+        <div><label>Labour charge (₹)</label><input id="labour" type="number" min="0" value="${labour}"></div>
+        <div><label>Other expenses (₹)</label><input id="otherExp" type="number" min="0" value="${other}"></div>
+        <div><label>Tax (₹)</label><input id="tax" type="number" min="0" value="${tax}"></div>
+        <div><label>Discount (₹)</label><input id="discount" type="number" min="0" value="${discount}"></div>
+      </div>
+      <div class="row"><button class="btn secondary" id="btnSaveCosts">Update costs</button></div>
+      <div style="margin-top:14px">
+        <div class="cost-line"><span>Parts total</span><span>${money(partsTotal)}</span></div>
+        <div class="cost-line"><span>Labour</span><span>${money(labour)}</span></div>
+        <div class="cost-line"><span>Other + tax − discount</span><span>${money(other+tax-discount)}</span></div>
+        <div class="cost-line total"><span>Customer total</span><span>${money(customerTotal)}</span></div>
+      </div>
+    </div>
+
+    <h2>Repair Status</h2>
+    <div class="panel">
+      <div class="row">
+        <select id="statusSelect">${STATUS_FLOW.map(s=>`<option ${s===r.status?'selected':''}>${s}</option>`).join('')}</select>
+        <button class="btn" id="btnAdvance">Update status</button>
+      </div>
+      <h2 style="font-size:14px; margin-top:18px">Timeline</h2>
+      <ul class="timeline">
+        ${(r.timeline||[]).slice().reverse().map(t=>`<li><div>${esc(t.text)}</div><div class="t">${new Date(t.t).toLocaleString()}</div></li>`).join('')}
+      </ul>
+    </div>
+
+    ${r.status==='Delivered' ? `<h2>QR Service Report</h2><div class="panel qr-wrap">
+        <div id="qrcode"></div>
+        <div>
+          <div style="font-size:13.5px; margin-bottom:8px">Customer-facing report link (no profit or internal data shown):</div>
+          <div class="pill" style="user-select:all">${location.origin}${location.pathname}#report-${r.id}</div>
+          <div class="row" style="margin-top:10px"><button class="btn secondary" id="btnOpenReport">Open report</button></div>
+        </div>
+      </div>` : `<div class="disclaimer" style="margin-top:14px">A QR service report becomes available once the repair status is set to "Delivered".</div>`}
+  `;
+
+  document.getElementById('back').onclick = ()=>{ renderRepairsList(m); };
+  document.getElementById('btnRerun').onclick = ()=> runAIDiagnosis(r.id);
+  document.getElementById('btnSaveFault').onclick = ()=>{
+    updateRepair(r.id, {confirmedFault: document.getElementById('confirmedFault').value.trim(),
+      timeline:[...(r.timeline||[]), {t:Date.now(), text:'Technician confirmed fault', status:r.status}]});
+  };
+  document.getElementById('btnAddPart').onclick = ()=>{
+    const name = document.getElementById('pName').value.trim();
+    const cat = document.getElementById('pCat').value;
+    const price = Number(document.getElementById('pPrice').value)||0;
+    if(!name){ return; }
+    const parts = [...(r.parts||[]), {name, category:cat, price}];
+    updateRepair(r.id, {parts});
+  };
+  document.getElementById('btnSaveCosts').onclick = ()=>{
+    updateRepair(r.id, {
+      labour: Number(document.getElementById('labour').value)||0,
+      payment: {
+        ...(r.payment||{}),
+        otherExpenses: Number(document.getElementById('otherExp').value)||0,
+        tax: Number(document.getElementById('tax').value)||0,
+        discount: Number(document.getElementById('discount').value)||0,
+        actualPartsCost: partsTotal,
+        customerTotal
+      }
+    });
+  };
+  document.getElementById('btnAdvance').onclick = ()=>{
+    const s = document.getElementById('statusSelect').value;
+    updateRepair(r.id, {status:s, timeline:[...(r.timeline||[]), {t:Date.now(), text:`Status changed to ${s}`, status:s}]});
+  };
+  if(r.status==='Delivered'){
+    const qrEl = document.getElementById('qrcode');
+    if(qrEl && window.QRCode){ qrEl.innerHTML=''; new QRCode(qrEl, {text: `${location.origin}${location.pathname}#report-${r.id}`, width:120, height:120}); }
+    const ob = document.getElementById('btnOpenReport');
+    if(ob) ob.onclick = ()=>{ location.hash = `#report-${r.id}`; };
+  }
+}
+function partsRows(r){
+  const parts = r.parts||[];
+  if(!parts.length) return '<div class="empty" style="padding:8px 0">No parts added yet.</div>';
+  return `<table><tbody>${parts.map((p,i)=>`<tr><td>${esc(p.name)}</td><td><span class="pill">${esc(p.category)}</span></td><td style="text-align:right">${money(p.price)}</td></tr>`).join('')}</tbody></table>`;
+}
+
+// ---------- customers (owner) ----------
+function renderCustomers(m){
+  const map = {};
+  repairs.forEach(r=>{
+    const k = r.customer?.phone || r.customer?.name;
+    if(!k) return;
+    if(!map[k]) map[k] = {name:r.customer.name, phone:r.customer.phone, repairs:[]};
+    map[k].repairs.push(r);
+  });
+  const list = Object.values(map);
+  m.innerHTML = `<h2 style="margin-top:0">Customers</h2>
+    ${list.length? `<div class="panel overflow"><table><thead><tr><th>Name</th><th>Phone</th><th>Visits</th><th>Total Spent</th></tr></thead><tbody>
+      ${list.map(c=>`<tr><td>${esc(c.name)} ${c.repairs.length>1?'<span class="pill">Returning</span>':''}</td><td>${esc(c.phone)}</td><td>${c.repairs.length}</td><td>${money(c.repairs.reduce((s,r)=>s+(r.payment?.customerTotal||0),0))}</td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="panel empty">No customers yet.</div>'}
+  `;
+}
+
+// ---------- customer lookup ----------
+function renderLookup(m){
+  m.innerHTML = `
+    <div class="panel">
+      <label>Enter your phone number to find your repair reports</label>
+      <input id="lookupPhone" placeholder="10-digit mobile number">
+      <div class="row" style="margin-top:12px"><button class="btn" id="btnLookup">Find reports</button></div>
+    </div>
+    <div id="lookupResults"></div>
+  `;
+  document.getElementById('btnLookup').onclick = ()=>{
+    const phone = document.getElementById('lookupPhone').value.trim();
+    const matches = repairs.filter(r=> r.customer?.phone===phone && r.status==='Delivered');
+    const out = document.getElementById('lookupResults');
+    out.innerHTML = matches.length
+      ? `<h2>Your Reports</h2>` + matches.map(r=>`<div class="panel repair-item" data-id="${r.id}" style="margin-bottom:10px; cursor:pointer">${esc(r.device.brand)} ${esc(r.device.model)} — delivered ${new Date(r.timeline.slice(-1)[0].t).toLocaleDateString()}</div>`).join('')
+      : `<div class="empty">No completed reports found for that number.</div>`;
+    out.querySelectorAll('.repair-item').forEach(el=> el.onclick = ()=>{ location.hash = `#report-${el.dataset.id}`; });
+  };
+}
+
+// ---------- public QR report ----------
+function renderPublicReport(m){
+  const id = location.hash.replace('#report-','');
+  const r = repairs.find(x=>x.id===id);
+  if(!r){ m.innerHTML = `<div class="panel empty">Report not found, or repairs are still loading.</div>`; return; }
+  const partsTotal = (r.parts||[]).reduce((s,p)=>s+(Number(p.price)||0),0);
+  m.innerHTML = `
+    <button class="detail-back" id="backHome">&larr; Close report</button>
+    <div class="panel">
+      <div class="logo" style="margin-bottom:10px">Fix<span>It</span> AI — Service Report</div>
+      <table>
+        <tbody>
+          <tr><th>Repair ID</th><td>${esc(r.id)}</td></tr>
+          <tr><th>Customer</th><td>${esc(r.customer?.name)}</td></tr>
+          <tr><th>Device</th><td>${esc(r.device?.brand)} ${esc(r.device?.model)} (${esc(r.device?.category)})</td></tr>
+          <tr><th>Reported problem</th><td>${esc(r.problem)}</td></tr>
+          <tr><th>Confirmed fault</th><td>${esc(r.confirmedFault)||'—'}</td></tr>
+          <tr><th>Parts replaced</th><td>${(r.parts||[]).map(p=>esc(p.name)).join(', ')||'—'}</td></tr>
+          <tr><th>Total amount paid</th><td>${money(r.payment?.customerTotal)}</td></tr>
+          <tr><th>Status</th><td><span class="badge ${STATUS_CLASS(r.status)}">${esc(r.status)}</span></td></tr>
+          <tr><th>Completed</th><td>${r.timeline?.length ? new Date(r.timeline.slice(-1)[0].t).toLocaleDateString() : '—'}</td></tr>
+        </tbody>
+      </table>
+      <div class="disclaimer">This report shows no internal shop profit, technician incentives, or other customers' data.</div>
+    </div>
+  `;
+  document.getElementById('backHome').onclick = ()=>{ location.hash=''; };
+}
+
+boot();
+})();
+</script>
+</body>
+</html>
