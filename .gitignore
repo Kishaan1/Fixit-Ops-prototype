@@ -3,6 +3,8 @@ dist/
 .env
 prisma/dev.db
 prisma/dev.db-journal
+prisma/*.db
+prisma/*.db-journal
 prisma/shadow-diff.db
 shadow-diff.db
 server/uploads/*
