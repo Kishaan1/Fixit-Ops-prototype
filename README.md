@@ -18,8 +18,8 @@ The app adds on top of the spreadsheet what a sheet alone cannot do:
 > 📘 **Looking for how to use the app day-to-day?**
 > The step-by-step guide for the shop owner and technicians lives in **[USER_MANUAL.md](USER_MANUAL.md)**.
 
-> 📱 **FIXIT AI also installs as an Android app** — the direct APK download, QR code and
-> install steps live in **[Android app](#android-app)** below.
+> 📱 **FIXIT AI also installs as an Android app** — what it does, permissions and install
+> steps are explained in **[Android app](#android-app)** below.
 
 ---
 
@@ -426,7 +426,7 @@ npm scripts:
 | `npm run assets:brand` | Regenerate the Android icon/splash source images (`assets/`) via headless Chrome |
 | `npm run android:offline` | Bake `CAP_SERVER_URL` into the bundled offline page (run after `npm run build`) |
 | `npm run android:version` | Sync the `package.json` version into the Android app (`versionName`/`versionCode`) |
-| `npm run android:qr -- <owner/repo>` | Generate + verify the APK download QR and insert the live link into this README |
+| `npm run android:qr -- Kishaan1/Fixit-Ops-prototype` | Generate + verify the APK download QR and insert the live link into this README |
 | `npm run setup` | Alias for `db:verify:sheets` |
 
 Helper scripts in [`scripts/`](scripts/) used by those commands and by maintainers:
@@ -576,20 +576,15 @@ separate database and no demo credentials.
 | Target Android | 15 (API 35) |
 | Backend | the deployed production server — set once via the `CAP_SERVER_URL` build variable; never localhost |
 
-### Download
+### APK releases
 
 <!-- fixit-apk-download:start -->
-> 🔗 **The direct download link and QR code are inserted here automatically once the
-> private GitHub repository exists and the first release is published.** After pushing
-> tag `v1.0.0` (see [Releasing a new APK](#releasing-a-new-apk)), run:
->
-> ```bash
-> npm run android:qr -- <owner/repo>
-> ```
->
-> That command generates the **verified** QR code (`docs/qr/android-apk.png`), confirms it
-> decodes back to the real download URL, and writes the live link into this block. No
-> placeholder link is ever committed.
+> The signed APK is built and verified by GitHub Actions and attached to tagged releases in
+> the private repository
+> **[Kishaan1/Fixit-Ops-prototype](https://github.com/Kishaan1/Fixit-Ops-prototype)**.
+> Until a release is published, use the browser version on the phone — it has the same
+> accounts, data and features. A direct link and QR code are added here when a release
+> goes live.
 <!-- fixit-apk-download:end -->
 
 > 🔒 This repository is **private** (it holds the Sheets gateway credentials), so the
@@ -598,8 +593,8 @@ separate database and no demo credentials.
 
 ### Installing on an Android device
 
-1. Open the download link above **on the phone** (or scan the QR code with the camera),
-   signed in to GitHub in the browser — the APK downloads directly.
+1. Get the signed APK from a tagged release of the private repository **on the phone**
+   (signed in to GitHub in the browser) — the APK downloads directly.
 2. Tap the downloaded `FIXIT-AI.apk` in the notification shade or the Downloads app.
 3. Android asks once to allow installs from that source — allow it
    (*Settings → Apps → Special access → Install unknown apps* on Android 8 and newer).
@@ -638,11 +633,16 @@ separate database and no demo credentials.
 
 Add a row here for every release and push a matching `v*` tag (see below).
 
-### First push to GitHub (one-time)
+### GitHub repository
 
-The project is already a local git repository (branch `main`). To publish it, sign in once
-with the GitHub CLI — a browser window opens, and no password is typed into the repo or
-terminal (the token is stored in Windows Credential Manager):
+The source is hosted in the private repository
+**[Kishaan1/Fixit-Ops-prototype](https://github.com/Kishaan1/Fixit-Ops-prototype)**, with
+`main` pushed there. It must stay private: `server/sheets/appsscript/Code.gs` contains the
+live Sheets gateway credentials.
+
+For command-line work from another machine, sign in once with the GitHub CLI — a browser
+window opens, and no password is typed into the repo or terminal (the token is stored in
+Windows Credential Manager):
 
 ```powershell
 gh auth login          # pick: GitHub.com → HTTPS → authenticate Git: Yes → Login with a web browser
@@ -651,25 +651,16 @@ gh auth status         # should print "Logged in to github.com account <you>"
 ```
 
 On this PC the portable CLI is already installed at `C:\gh\bin\gh.exe` and on `PATH`; on
-any other machine get it from <https://cli.github.com/>. Then create the **private**
-repository and push everything in one command from the project root:
+any other machine get it from <https://cli.github.com/>. If the repository ever needs to be
+recreated from a fresh local copy, use its real name:
 
 ```powershell
-gh repo create fixit-ai --private --source . --remote origin --push
+gh repo create Kishaan1/Fixit-Ops-prototype --private --source . --remote origin --push
 ```
 
-This creates `github.com/<you>/fixit-ai` (private — the Sheets gateway credentials live in
-`server/sheets/appsscript/Code.gs`), registers it as `origin`, and pushes `main`.
-Next, configure the repository variable and secrets from
-[Release signing](#release-signing), then tag the first release:
-
-```powershell
-git tag v1.0.0
-git push origin main v1.0.0
-```
-
-Once that release exists, run `npm run android:qr -- <owner/repo>` (see
-[Download](#download)) to publish the real download link and verified QR code.
+The build settings this repository needs are documented in
+[Release signing](#release-signing); subsequent releases are covered in
+[Releasing a new APK](#releasing-a-new-apk).
 
 ### Releasing a new APK
 
@@ -692,8 +683,8 @@ APK as a release asset. To cut a release:
    on the releases page.
 4. Add a row to the [version history](#version-history) above describing what changed.
 
-The one-time repository setup this needs is in
-[First push to GitHub](#first-push-to-github-one-time) and [Release signing](#release-signing).
+The repository and its build settings are described in
+[GitHub repository](#github-repository) and [Release signing](#release-signing).
 The workflow fails with a clear message when something is missing rather than publishing a
 broken APK.
 
