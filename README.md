@@ -579,12 +579,17 @@ separate database and no demo credentials.
 ### APK releases
 
 <!-- fixit-apk-download:start -->
-> The signed APK is built and verified by GitHub Actions and attached to tagged releases in
-> the private repository
-> **[Kishaan1/Fixit-Ops-prototype](https://github.com/Kishaan1/Fixit-Ops-prototype)**.
-> Until a release is published, use the browser version on the phone — it has the same
-> accounts, data and features. A direct link and QR code are added here when a release
-> goes live.
+**⬇️ [Download FIXIT AI for Android — FIXIT-AI.apk](https://github.com/Kishaan1/Fixit-Ops-prototype/releases/latest/download/FIXIT-AI.apk)**
+
+The link always points at the **latest release** APK. Sign in to GitHub with an account that
+has access to this private repository, open the link, and the APK downloads directly.
+Previous versions remain available on the [releases page](https://github.com/Kishaan1/Fixit-Ops-prototype/releases).
+
+<p align="center">
+  <a href="https://github.com/Kishaan1/Fixit-Ops-prototype/releases/latest/download/FIXIT-AI.apk"><img src="docs/qr/android-apk.png" alt="Scan to download FIXIT AI for Android" width="220"></a>
+</p>
+
+*Scan to download FIXIT AI for Android.*
 <!-- fixit-apk-download:end -->
 
 > 🔒 This repository is **private** (it holds the Sheets gateway credentials), so the
